@@ -1,4 +1,4 @@
-package com.truemoney.api.springheadersrelay.config;
+package com.truemoney.api.springheadersrelay.lib;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
@@ -20,10 +20,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
-@ConditionalOnClass(RestTemplate.class)
+@ConditionalOnClass(RestTemplate.class)// TODO move to inter class when WebClient is ready.
 @AutoConfigureBefore(HttpClientConfiguration.class)
 @Slf4j
 public class HeaderRestTemplateAutoConfiguration {
+    @Autowired
+    HeaderConfiguration headerConfiguration;
+
     @Configuration
     protected class HeaderInterceptorConfiguration {
         @Autowired
@@ -38,7 +41,7 @@ public class HeaderRestTemplateAutoConfiguration {
         @Bean
         @Order
         RestTemplateCustomizer traceRestTemplateCustomizer() {
-            return new HeaderRestTemplateCustomizer(new HeaderRestTemplateInterceptor());
+            return new HeaderRestTemplateCustomizer(new HeaderRestTemplateInterceptor(headerConfiguration.include));
         }
     }
 
@@ -54,13 +57,13 @@ public class HeaderRestTemplateAutoConfiguration {
         public void customize(RestTemplate restTemplate) {
             new RestTemplateInterceptorInjector(this.interceptor).inject(restTemplate);
         }
-
     }
 
     class HeaderRestTemplateBeanPostProcessor implements BeanPostProcessor {
-        HeaderRestTemplateBeanPostProcessor(){
+        HeaderRestTemplateBeanPostProcessor() {
 
         }
+
         @Override
         public Object postProcessBeforeInitialization(Object bean, String beanName)
                 throws BeansException {
@@ -78,7 +81,7 @@ public class HeaderRestTemplateAutoConfiguration {
         }
 
         private HeaderRestTemplateInterceptor interceptor() {
-            return new HeaderRestTemplateInterceptor();
+            return new HeaderRestTemplateInterceptor(headerConfiguration.include);
         }
 
     }

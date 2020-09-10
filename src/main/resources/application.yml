@@ -1,0 +1,4 @@
+header:
+  include:
+    - "X-location"
+    - "X-random"

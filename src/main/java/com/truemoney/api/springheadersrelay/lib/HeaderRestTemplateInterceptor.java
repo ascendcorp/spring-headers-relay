@@ -1,4 +1,4 @@
-package com.truemoney.api.springheadersrelay.config;
+package com.truemoney.api.springheadersrelay.lib;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -6,28 +6,25 @@ import org.springframework.http.HttpRequest;
 import org.springframework.http.client.ClientHttpRequestExecution;
 import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.util.StringUtils;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.util.Enumeration;
+import java.util.List;
 
 @Slf4j
 public class HeaderRestTemplateInterceptor implements ClientHttpRequestInterceptor {
-    HeaderRestTemplateInterceptor() {
-    }
+    private final List<String> headerInclude;
 
-    // mock header name,
-    // TODO next get header from config file.
-    private static final String HEADER_X_LOCATION = "X-location";
+    HeaderRestTemplateInterceptor(List<String> headerInclude) {
+        this.headerInclude = headerInclude;
+    }
 
     @Override
     public ClientHttpResponse intercept(HttpRequest request, byte[] body,
                                         ClientHttpRequestExecution execution) throws IOException {
-        request.getHeaders().forEach((k, v) ->
-                log.info("before key: {}  value: {}", k, v)
-        );
 
         if (RequestContextHolder.getRequestAttributes() != null) {
             // Get httpServletRequest from dispatcherServlet
@@ -35,26 +32,22 @@ public class HeaderRestTemplateInterceptor implements ClientHttpRequestIntercept
             // inject http headers to rest template request.
             this.prepareHeaders(request.getHeaders(), curRequest);
         } else {
-            log.error("out of request scope DispatcherServlet.");
+            log.error("out of request scope dispatcherServlet, not work with netty(non blocking) or async.");
         }
-        log.info("hello world auto interceptor.");
 
         request.getHeaders().forEach((k, v) ->
-                log.info("key: {}  value: {}", k, v)
+                log.info("Result request header key: {}  value: {}", k, v)
         );
-
 
         return execution.execute(request, body);
     }
 
     private void prepareHeaders(HttpHeaders requestHeader, HttpServletRequest curRequest) {
-        Enumeration<String> c = curRequest.getHeaderNames();
-        while (c.hasMoreElements()) {
-            String header = c.nextElement();
-            if (HEADER_X_LOCATION.equalsIgnoreCase(header)) {
-                requestHeader.add(HEADER_X_LOCATION, curRequest.getHeader(header));
+        for (String headerKey : headerInclude) {
+            if (!StringUtils.isEmpty(curRequest.getHeader(headerKey))) {
+                requestHeader.add(headerKey, curRequest.getHeader(headerKey));
+                log.info("Added header k :{}, v :{}", headerKey, curRequest.getHeader(headerKey));
             }
-            log.info("cur request {} {}", header, curRequest.getHeader(header));
         }
     }
 }
